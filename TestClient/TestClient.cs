@@ -39,7 +39,7 @@ try
                 break;
             case ExceptionTrapped ex:
                 //未捕捉例外
-                Console.WriteLine($"caught exception: {ex}");
+                Console.WriteLine($"caught exception: {ex.Exception}");
                 //継続はできないのでイベントをシグナルとする
                 receivedEvent.Set();
                 break;

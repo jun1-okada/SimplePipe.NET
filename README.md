@@ -142,6 +142,43 @@ public SimpleNamedPipeClient(
  - `ArgumentException`: パラメータが不正
  - `ArgumentOutOfRangeException`: パラメータが不正
 
+インスタンス生成と同時にサーバーに接続を行う。接続先のサーバーが見つからないか既に接続済みの場合は `connectTimeout` の間、接続可能となるまで待機する。
+
+イベントコールバックの注意点として、`Received` イベントの `Received.Data` はそのコールバック中でのみ有効であり、コールバック終了後は内容が保証されない。__コールバック外で利用する場合は必ずコピーをすること__。
+
+コンストラクタのコード例
+```cs
+    //クライアントインスタンス生成
+    using var client = new SimpleNamedPipeClient(PipeName, (pipeEvent) =>
+    {
+        //コールバック処理
+        switch (pipeEvent)
+        {
+            case Disconnected:
+                //切断
+                Console.WriteLine("disconnected");
+                break;
+            case Received received:
+                //データ受信
+                // 受信データを文字列化してコンソールへ表示
+                var str = encoding.GetString(received.Data.Span);
+                Console.WriteLine(str);
+                if (0 == Interlocked.Decrement(ref remain))
+                {
+                    //送信したデータがすべてechoされたので終了
+                    receivedEvent.Set();
+                }
+                break;
+            case ExceptionTrapped ex:
+                //未捕捉例外
+                Console.WriteLine($"caught exception: {ex.Exception}");
+                //継続はできないのでイベントをシグナルとする
+                receivedEvent.Set();
+                break;
+        }
+    });
+```
+
 ### WriteAsync
 データ送信には `WriteAsync` を利用する。利用方法はサーバーと同様。
 
@@ -191,7 +228,7 @@ try
                 break;
             case ExceptionTrapped ex:
                 //未捕捉例外
-                Console.WriteLine($"caught exception: {ex}");
+                Console.WriteLine($"caught exception: {ex.Exception}");
                 break;
         }
     });
@@ -255,7 +292,7 @@ try
                 break;
             case ExceptionTrapped ex:
                 //未捕捉例外
-                Console.WriteLine($"caught exception: {ex}");
+                Console.WriteLine($"caught exception: {ex.Exception}");
                 //継続はできないのでイベントをシグナルとする
                 receivedEvent.Set();
                 break;
